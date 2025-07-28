@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grão System</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="manifest" href="/static/manifest.json" />
+    <meta name="theme-color" content="#2E7D32" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="header-container">
+        <div class="logo-section">
+          <img src="/static/img/logo.png" alt="Grão de Salvador" class="logo">
+          <div class="company-info">
+            <h1 class="company-name">Grão System</h1>
+            <p class="company-tagline">Automação de sistemas</p>
+          </div>
+        </div>
+        <nav class="nav">
+          <div class="dropdown">
+            <button class="dropdown-toggle nav-link active" id="dropdownMenu" type="button">
+              Crossdocking Pituba <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="dropdown-menu" id="dropdownMenuContent">
+              <a href="#" class="dropdown-item active" data-section="pituba">
+                <i class="fas fa-warehouse"></i>
+                Crossdocking Pituba
+              </a>
+              <a href="#" class="dropdown-item" data-section="hortifruti">
+                <i class="fas fa-carrot"></i>
+                Crossdocking Hortifruti
+              </a>
+            </div>
+          </div>
+          <a href="{{ url_for('planilhas') }}" class="nav-link">Planilhas</a>
+          <a href="{{ url_for('txts') }}" class="nav-link">TXTs</a>
+          
+          <!-- Profile Dropdown -->
+          <div class="profile-dropdown">
+            <button class="profile-toggle" id="profileDropdown" type="button">
+              <i class="fas fa-user-circle"></i>
+              <span class="username">{{ current_user.username }}</span>
+              <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="profile-menu" id="profileMenu">
+              <div class="profile-header">
+                <i class="fas fa-user-circle profile-avatar"></i>
+                <div class="profile-info">
+                  <span class="profile-name">{{ current_user.username }}</span>
+                  <span class="profile-email">{{ current_user.email }}</span>
+                </div>
+              </div>
+              <div class="profile-divider"></div>
+              <a href="{{ url_for('reset_password_request') }}" class="profile-item">
+                <i class="fas fa-key"></i>
+                Redefinir Senha
+              </a>
+              <a href="{{ url_for('logout') }}" class="profile-item logout-item">
+                <i class="fas fa-sign-out-alt"></i>
+                Sair
+              </a>
+            </div>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="container">
+        <div class="content-card">
+          <div class="card-header">
+            <i class="fas fa-file-upload card-icon"></i>
+            <h2>Sistema de Processamento: Pedidos Pituba</h2>
+            <p class="subtitle">Processe seus arquivos Excel e gere relatórios unificados</p>
+          </div>
+          
+          <form action="/processar" method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+            <input type="hidden" name="section" id="currentSection" value="{{ initial_section }}">
+            
+            <div class="file-upload-area">
+              <div class="upload-icon">
+                <i class="fas fa-cloud-upload-alt"></i>
+              </div>
+              <h3>Selecione os arquivos para processamento</h3>
+              <p id="uploadDescription">Arraste e solte ou clique para selecionar arquivos .xls ou .xlsx</p>
+              <input
+                type="file"
+                name="files[]"
+                accept=".xls,.xlsx"
+                multiple
+                required
+                class="file-input"
+                id="fileInput"
+              />
+              <label for="fileInput" class="file-label">
+                <i class="fas fa-plus"></i>
+                Escolher Arquivos
+              </label>
+            </div>
+            
+            <div class="selected-files" id="selectedFiles">
+              <!-- Arquivos selecionados aparecerão aqui -->
+            </div>
+            
+            <button type="submit" class="process-btn" id="processBtn">
+              <i class="fas fa-cogs"></i>
+              Processar Arquivos
+            </button>
+          </form>
+          
+          <!-- Seção de Produtos para Pituba -->
+          <div class="products-section" id="productsSection" style="display: none;">
+            <div class="section-header">
+              <i class="fas fa-boxes"></i>
+              <h3>Produtos para Pituba</h3>
+              <p class="products-summary" id="productsSummary"></p>
+            </div>
+            
+            <div class="table-container">
+              <table class="products-table" id="productsTable">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-hashtag"></i> Código</th>
+                    <th><i class="fas fa-box"></i> Produto</th>
+                    <th><i class="fas fa-sort-numeric-up"></i> Quantidade</th>
+                    <th><i class="fas fa-file-alt"></i> Arquivo Origem</th>
+                  </tr>
+                </thead>
+                <tbody id="productsTableBody">
+                  <!-- Produtos serão inseridos aqui -->
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="download-section">
+              <button class="download-btn" id="downloadBtn" style="display: none;">
+                <i class="fas fa-download"></i>
+                Baixar Arquivo TXT Unificado
+              </button>
+            </div>
+          </div>
+          
+          <!-- Seção de Produtos para Hortifruti -->
+          <div class="products-section" id="hortifrutiProductsSection" style="display: none;">
+            <div class="section-header">
+              <i class="fas fa-carrot"></i>
+              <h3>Produtos Hortifruti por Loja</h3>
+              <p class="products-summary" id="hortifrutiProductsSummary"></p>
+            </div>
+            
+            <div class="table-container">
+              <table class="products-table" id="hortifrutiProductsTable">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-hashtag"></i> Código</th>
+                    <th><i class="fas fa-carrot"></i> Produto</th>
+                    <th><i class="fas fa-store"></i> Vilas</th>
+                    <th><i class="fas fa-store"></i> Vitória</th>
+                    <th><i class="fas fa-store"></i> Pituba</th>
+                    <th><i class="fas fa-store"></i> Apipema</th>
+                    <th><i class="fas fa-file-alt"></i> Arquivo Origem</th>
+                  </tr>
+                </thead>
+                <tbody id="hortifrutiProductsTableBody">
+                  <!-- Produtos Hortifruti serão inseridos aqui -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Seção de Downloads para Hortifruti -->
+          <div class="downloads-section" id="downloadsSection" style="display: none;">
+            <div class="section-header">
+              <i class="fas fa-download"></i>
+              <h3>Arquivos Gerados</h3>
+              <p class="downloads-summary" id="downloadsSummary"></p>
+            </div>
+            
+            <div class="downloads-container">
+              <div class="downloads-grid" id="downloadsGrid">
+                <!-- Downloads serão inseridos aqui -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- JavaScript -->
+    <script src="/static/js/script.js"></script>
+  </body>
+</html>

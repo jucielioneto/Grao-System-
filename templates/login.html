@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Grão System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(46,125,50,0.18);
+            max-width: 400px;
+            width: 100%;
+            padding: 2.5rem 2rem 2rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeInUp 0.7s;
+        }
+        .login-logo {
+            height: 80px;
+            margin-bottom: 1.2rem;
+        }
+        .login-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2E7D32;
+            margin-bottom: 1.2rem;
+            text-align: center;
+        }
+        .login-form {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+        .login-form .form-group {
+            position: relative;
+        }
+        .login-form .form-control {
+            width: 100%;
+            padding: 0.8rem 1rem 0.8rem 2.5rem;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            font-size: 1rem;
+            transition: border 0.2s;
+        }
+        .login-form .form-control:focus {
+            border: 1.5px solid #2E7D32;
+            outline: none;
+        }
+        .login-form .form-group i {
+            position: absolute;
+            left: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #2E7D32;
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+        .login-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #2E7D32 0%, #388E3C 100%);
+            color: white;
+            border: none;
+            padding: 1rem 0;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(46,125,50,0.08);
+        }
+        .login-btn:hover {
+            background: linear-gradient(135deg, #388E3C 0%, #2E7D32 100%);
+            transform: translateY(-2px) scale(1.03);
+        }
+        .login-link {
+            color: #2E7D32;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .login-link:hover {
+            text-decoration: underline;
+        }
+        .alert {
+            margin-bottom: 1rem;
+            padding: 0.8rem;
+            border-radius: 8px;
+            background: #ffeaea;
+            color: #c0392b;
+            text-align: center;
+            font-size: 1rem;
+        }
+        @media (max-width: 480px) {
+            .login-card { padding: 1.2rem 0.5rem; }
+            .login-title { font-size: 1.3rem; }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="login-card">
+        <img src="/static/img/logo.png" alt="Logo Grão" class="login-logo">
+        <div class="login-title">Login</div>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        <form method="POST" class="login-form">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                <i class="fas fa-user"></i>
+                {{ form.username(class_="form-control", placeholder="Usuário") }}
+            </div>
+            <div class="form-group">
+                <i class="fas fa-lock"></i>
+                {{ form.password(class_="form-control", placeholder="Senha") }}
+            </div>
+            <div class="form-group">
+                {{ form.submit(class_="login-btn") }}
+            </div>
+        </form>
+        <p style="text-align:center; margin-top:0.7rem;">
+            <a href="{{ url_for('reset_password_request') }}" class="login-link" style="font-size:0.98rem;">Esqueci a senha?</a>
+        </p>
+        <p style="text-align:center; margin-top:1.2rem;">Não tem conta? <a href="{{ url_for('register') }}" class="login-link">Registrar</a></p>
+    </div>
+</body>
+</html> 
