@@ -338,12 +338,12 @@ def visualizar_planilha(planilha_id):
                 for coluna_loja, nome_loja in lojas.items():
                     quantidade = row.get(coluna_loja, 0)
                     if pd.notna(quantidade):
-                        quantidades[nome_loja] = int(quantidade)
+                        quantidades[nome_loja] = float(quantidade)
                     else:
                         quantidades[nome_loja] = 0
                 produtos_processados.append({
-                    'codigo': str(int(codigo)),
-                    'nome': str(nome_produto) if pd.notna(nome_produto) else str(int(codigo)),
+                    'codigo': str(float(codigo)),
+                    'nome': str(nome_produto) if pd.notna(nome_produto) else str(float(codigo)),
                     'quantidades': quantidades
                 })
             tipo_proc = 'hortifruti'
@@ -579,11 +579,11 @@ def processar_hortifruti(files):
             with open(caminho_saida, 'w') as f:
                 for _, row in df.iterrows():
                     if pd.notna(row['Cod.']) and pd.notna(row[coluna_loja]):
-                        linha = f"{int(row['Cod.'])};{int(row[coluna_loja])}\n"
+                        linha = f"{float(row['Cod.'])};{float(row[coluna_loja])}\n"
                         f.write(linha)
-                        codigo_produto = str(int(row['Cod.']))
+                        codigo_produto = str(float(row['Cod.']))
                         nome_produto = str(row['Nome do Produto']) if pd.notna(row['Nome do Produto']) else codigo_produto
-                        quantidade = int(row[coluna_loja])
+                        quantidade = float(row[coluna_loja])
                         if codigo_produto not in produtos_unicos:
                             produtos_unicos[codigo_produto] = {
                                 'codigo': codigo_produto,
@@ -704,7 +704,7 @@ def processar_pituba(files):
                 produto = {
                     'codigo': row['numero_produto'],
                     'nome': row['Descrição'] if 'Descrição' in row and pd.notna(row['Descrição']) else row['numero_produto'],
-                    'quantidade': int(row['quantidade_numero']),
+                    'quantidade': float(row['quantidade_numero']),
                     'arquivo_origem': arquivo.filename
                 }
                 produtos_processados.append(produto)
