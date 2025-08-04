@@ -342,8 +342,8 @@ def visualizar_planilha(planilha_id):
                     else:
                         quantidades[nome_loja] = 0
                 produtos_processados.append({
-                    'codigo': str(float(codigo)),
-                    'nome': str(nome_produto) if pd.notna(nome_produto) else str(float(codigo)),
+                    'codigo': str(int(float(codigo))),
+                    'nome': str(nome_produto) if pd.notna(nome_produto) else str(int(float(codigo))),
                     'quantidades': quantidades
                 })
             tipo_proc = 'hortifruti'
@@ -558,6 +558,29 @@ def processar_hortifruti(files):
         if len(df.columns) > 1 and df.columns[1] != 'Nome do Produto':
             df.columns.values[1] = 'Nome do Produto'
         print('Colunas lidas:', df.columns.tolist())
+        print('Primeiras 5 linhas da planilha:')
+        print(df.head())
+        
+        # Define o mapeamento de lojas
+        lojas = {
+            'Pedido Pituba': 'pituba',
+            'Pedido Vitoria': 'vitoria',
+            'Pedido Vilas': 'vilas',
+            'Pedido Apipema': 'apipema'
+        }
+        
+        # Verifica se as colunas necessárias existem
+        colunas_necessarias = ['Cod.'] + list(lojas.keys())
+        colunas_faltando = [col for col in colunas_necessarias if col not in df.columns]
+        if colunas_faltando:
+            print(f'AVISO: Colunas faltando: {colunas_faltando}')
+            print(f'Colunas disponíveis: {df.columns.tolist()}')
+        
+        # Mostra algumas linhas com dados para debug
+        print('Exemplos de dados:')
+        for idx, row in df.head(3).iterrows():
+            if pd.notna(row.get('Cod.')):
+                print(f'Linha {idx}: Código={row["Cod."]}, Quantidades={[row.get(col, "N/A") for col in lojas.keys()]}')
     except Exception as e:
         print('Erro ao ler arquivo:', e)
         return jsonify({'error': f'Erro ao ler arquivo: {str(e)}'})
@@ -577,13 +600,25 @@ def processar_hortifruti(files):
             caminho_saida = os.path.join(app.config['OUTPUT_FOLDER'], nome_arquivo)
             print(f'Gerando arquivo: {nome_arquivo}')
             with open(caminho_saida, 'w') as f:
+                print(f'Processando coluna: {coluna_loja}')
                 for _, row in df.iterrows():
                     if pd.notna(row['Cod.']) and pd.notna(row[coluna_loja]):
-                        linha = f"{float(row['Cod.'])};{float(row[coluna_loja])}\n"
+                        # Converte código para inteiro (remove .0) e quantidade para string com vírgula
+                        codigo_int = int(float(row['Cod.']))
+                        quantidade_valor = float(row[coluna_loja])
+                        quantidade_str = str(quantidade_valor).replace('.', ',')
+                        linha = f"{codigo_int};{quantidade_str}\n"
                         f.write(linha)
-                        codigo_produto = str(float(row['Cod.']))
+                        # Debug: mostra alguns valores para verificar
+                        if codigo_int in [1878, 1915, 2009]:
+                            print(f'Código: {codigo_int}, Quantidade original: {row[coluna_loja]}, Quantidade convertida: {quantidade_valor}')
+                        # Debug adicional: mostra todas as colunas para os primeiros registros
+                        if codigo_int == 1878:
+                            print(f'DEBUG - Todas as colunas para código 1878:')
+                            for col in df.columns:
+                                print(f'  {col}: {row[col]}')
+                        codigo_produto = str(codigo_int)
                         nome_produto = str(row['Nome do Produto']) if pd.notna(row['Nome do Produto']) else codigo_produto
-                        quantidade = float(row[coluna_loja])
                         if codigo_produto not in produtos_unicos:
                             produtos_unicos[codigo_produto] = {
                                 'codigo': codigo_produto,
@@ -591,7 +626,7 @@ def processar_hortifruti(files):
                                 'quantidades': {},
                                 'arquivo_origem': arquivo.filename
                             }
-                        produtos_unicos[codigo_produto]['quantidades'][nome_loja] = quantidade
+                        produtos_unicos[codigo_produto]['quantidades'][nome_loja] = quantidade_valor
             arquivos_gerados.append(nome_arquivo)
         else:
             print(f'Coluna não encontrada na planilha: {coluna_loja}')
@@ -630,7 +665,7 @@ def processar_hortifruti(files):
         'total_produtos': len(produtos_processados),
         'arquivos_gerados': arquivos_gerados,
         'section': 'hortifruti',
-        'lojas': list(lojas.values())
+        'loja': list(lojas.values())
     })
 
 def processar_pituba(files):
