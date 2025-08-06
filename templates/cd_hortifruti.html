@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CD HORTIFRUTI</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .upload-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .upload-card {
+            background: white;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .upload-card.dragover {
+            border-color: #2E7D32;
+            background-color: #f8fff8;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            color: #2E7D32;
+            margin-bottom: 20px;
+        }
+        
+        .upload-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .upload-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .choose-files-btn {
+            background: #2E7D32;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .choose-files-btn:hover {
+            background: #1b5e20;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .selected-file {
+            background: #f5f5f5;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            display: none;
+        }
+        
+        .file-icon {
+            font-size: 20px;
+            color: #2E7D32;
+        }
+        
+        .file-info {
+            flex: 1;
+            text-align: left;
+        }
+        
+        .file-name {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .file-size {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .process-btn {
+            background: #2E7D32;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .process-btn:hover {
+            background: #1b5e20;
+        }
+        
+        .process-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .processamento-area {
+            margin-top: 30px;
+        }
+        
+        /* Estilos para a seção de fornecedores */
+        .fornecedores-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 20px 0;
+            border: 1px solid #e9ecef;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .section-header i {
+            font-size: 20px;
+            color: #2E7D32;
+        }
+        
+        .section-header h4 {
+            margin: 0;
+            color: #2E7D32;
+            font-weight: 600;
+            font-size: 18px;
+        }
+        
+        .fornecedores-count {
+            background: #2E7D32;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: auto;
+        }
+        
+        .fornecedor-selector {
+            margin-bottom: 20px;
+        }
+        
+        .fornecedor-selector label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #495057;
+            font-size: 14px;
+        }
+        
+        .dropdown-container {
+            position: relative;
+            max-width: 400px;
+        }
+        
+        .fornecedor-dropdown {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            color: #495057;
+            appearance: none;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+        
+        .fornecedor-dropdown:focus {
+            outline: none;
+            border-color: #2E7D32;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+        }
+        
+        .dropdown-arrow {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            pointer-events: none;
+        }
+        
+        .fornecedores-quick-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        
+        .quick-fornecedor-btn {
+            background: white;
+            border: 1px solid #dee2e6;
+            color: #495057;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .quick-fornecedor-btn:hover {
+            background: #2E7D32;
+            color: white;
+            border-color: #2E7D32;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(46, 125, 50, 0.2);
+        }
+        
+        .quick-fornecedor-btn.active {
+            background: #2E7D32;
+            color: white;
+            border-color: #2E7D32;
+        }
+        
+        /* Melhorias na tabela */
+        .table-responsive {
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .table {
+            margin-bottom: 0;
+        }
+        
+        .table thead th {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+            color: #495057;
+            padding: 12px 16px;
+        }
+        
+        .table tbody td {
+            padding: 12px 16px;
+            vertical-align: middle;
+        }
+        
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        /* Melhorias nos botões de ação */
+        .acoes-section {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .acoes-section .btn {
+            padding: 12px 24px;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .acoes-section .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Layout Logístico em Cards */
+        .logistica-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .logistica-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .fornecedor-info, .lojas-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #2E7D32;
+        }
+        
+        .fornecedor-info i, .lojas-info i {
+            font-size: 18px;
+        }
+        
+        .produtos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        
+        .produto-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .produto-card:hover {
+            border-color: #2E7D32;
+            box-shadow: 0 4px 16px rgba(46, 125, 50, 0.1);
+        }
+        
+        .produto-header {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .produto-codigo, .produto-nome, .produto-unidade {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .produto-codigo label, .produto-nome label, .produto-unidade label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+        
+        .produto-codigo input, .produto-nome input, .produto-unidade input {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .quantidades-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .quantidade-fornecedor {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .quantidade-fornecedor label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            color: #2E7D32;
+            min-width: 140px;
+        }
+        
+        .quantidade-input {
+            width: 100px;
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .quantidades-lojas {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .quantidades-lojas label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+        
+        .lojas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+        }
+        
+        .loja-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .loja-item label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+        
+        .loja-input {
+            padding: 6px 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .quantidade-input:focus, .loja-input:focus {
+            outline: none;
+            border-color: #2E7D32;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+        }
+        
+        .produto-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        
+        .total-info {
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            color: #2E7D32;
+        }
+        
+        .status-indicator i {
+            font-size: 16px;
+        }
+
+        /* Estilos para a seção de pesquisa */
+        .search-container {
+            margin-top: 15px;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 8px 12px;
+            background-color: white;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding-left: 10px;
+            border: none;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .search-box .clear-search-btn {
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 0 8px;
+            font-size: 16px;
+        }
+
+        .search-box .clear-search-btn:hover {
+            color: #dc3545;
+        }
+        
+        .search-box i {
+            color: #6c757d;
+            margin-right: 8px;
+        }
+        
+        .produtos-counter {
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .produto-card.hidden {
+            display: none !important;
+        }
+        
+        /* Estilos para pesquisa dentro da planilha */
+        #planilha-fornecedor .search-container {
+            margin: 20px 0;
+            padding: 0 20px;
+        }
+        
+        #planilha-fornecedor .search-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid #28a745;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #planilha-fornecedor .search-box:focus-within {
+            border-color: #20c997;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+        }
+        
+        #planilha-fornecedor .search-input {
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        #planilha-fornecedor .search-input::placeholder {
+            color: #6c757d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <main class="main-content">
+        <div class="container">
+            <div class="content-card">
+                <div class="card-header">
+                    <i class="fas fa-apple-alt card-icon"></i>
+                    <h2>CD HORTIFRUTI</h2>
+                    <p class="subtitle">Processe seus arquivos Excel e gere relatórios unificados</p>
+                </div>
+                
+                <div class="upload-container">
+                    <!-- Formulário de Upload -->
+                    <form action="/cd_hortifruti_upload" method="post" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+                        <div class="upload-card" id="uploadCard">
+                            <div class="upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <div class="upload-title">Selecione os arquivos para processamento</div>
+                            <div class="upload-subtitle">Arraste e solte ou clique para selecionar arquivos .xls ou .xlsx</div>
+                            <button type="button" class="choose-files-btn" id="chooseFilesBtn" onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-plus"></i>
+                                Escolher Arquivos
+                            </button>
+                            <input type="file" name="planilha" accept=".xls,.xlsx,.csv" required class="file-input" id="fileInput" onchange="updateFileInfo()" />
+                        </div>
+                        
+                        <!-- Área para arquivo selecionado -->
+                        <div class="selected-file" id="selectedFile" style="display: none;">
+                            <div class="file-icon">
+                                <i class="fas fa-file-excel"></i>
+                            </div>
+                            <div class="file-info">
+                                <div class="file-name" id="fileName"></div>
+                                <div class="file-size" id="fileSize"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Botão Processar -->
+                        <button type="submit" class="process-btn" id="processarBtn" disabled>
+                            <i class="fas fa-cogs"></i>
+                            Processar Arquivos
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Área de Processamento (inicialmente oculta) -->
+                <div class="processamento-area" id="processamento-area" style="display: none;">
+                    <div class="card-header">
+                        <i class="fas fa-cogs card-icon"></i>
+                        <h3>Dados Processados</h3>
+                        <p class="subtitle" id="arquivo-processado"></p>
+                    </div>
+                    
+                    <!-- Seção de Fornecedores -->
+                    <div class="fornecedores-section">
+                        <div class="section-header">
+                            <h3>Fornecedores</h3>
+                            <span class="badge" id="fornecedores-count">0 fornecedores</span>
+                        </div>
+                        
+                        <div class="fornecedor-selector">
+                            <div class="dropdown-container">
+                                <select id="fornecedor-dropdown" class="fornecedor-dropdown">
+                                    <option value="">Escolha um fornecedor...</option>
+                                </select>
+                            </div>
+                            
+                            <div id="fornecedores-quick-list" class="fornecedores-quick-list">
+                                <!-- Botões dos fornecedores serão adicionados aqui -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Área para exibir planilha do fornecedor selecionado -->
+                    <div id="planilha-fornecedor" class="mt-4" style="display: none;">
+                        <div class="card-header">
+                            <i class="fas fa-table card-icon"></i>
+                            <h4 id="titulo-fornecedor">Planilha do Fornecedor</h4>
+                        </div>
+                        <div class="search-container">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="produto-search" placeholder="Pesquisar produto..." class="search-input">
+                                <button type="button" id="clear-search" class="clear-search-btn">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="tabela-fornecedor"></div>
+                        <div class="mt-3">
+                            <button class="btn btn-success" id="salvar-alteracoes">
+                                <i class="fas fa-save"></i> Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Área para exibir planilha geral -->
+                    <div id="planilha-geral" class="mt-4" style="display: none;">
+                        <div class="card-header">
+                            <i class="fas fa-list card-icon"></i>
+                            <h4>Planilha Geral</h4>
+                        </div>
+                        <div id="tabela-geral"></div>
+                        <div class="mt-3">
+                            <button class="btn btn-success" id="salvar-geral">
+                                <i class="fas fa-save"></i> Salvar Alterações Gerais
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Botões de ação -->
+                    <div class="acoes-section mt-4">
+                        <button class="btn btn-info" id="gerar-geral">
+                            <i class="fas fa-list"></i> Gerar Geral
+                        </button>
+                        <button class="btn btn-warning" id="gerar-txt">
+                            <i class="fas fa-file-alt"></i> Gerar TXT
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        // Função simples para atualizar informações do arquivo
+        function updateFileInfo() {
+            const fileInput = document.getElementById('fileInput');
+            const selectedFile = document.getElementById('selectedFile');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const processarBtn = document.getElementById('processarBtn');
+            
+            const file = fileInput.files[0];
+            if (file) {
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                selectedFile.style.display = 'flex';
+                processarBtn.disabled = false;
+                console.log('Arquivo selecionado:', file.name);
+            }
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+        
+        // Event listener simples para o formulário
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadForm = document.getElementById('uploadForm');
+            
+            uploadForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log('Formulário submetido!');
+                
+                const fileInput = document.getElementById('fileInput');
+                const file = fileInput.files[0];
+                
+                if (!file) {
+                    alert('Selecione um arquivo primeiro!');
+                    return;
+                }
+                
+                console.log('Enviando arquivo:', file.name);
+                
+                const formData = new FormData();
+                formData.append('planilha', file);
+                
+                // Mostrar loading
+                const processarBtn = document.getElementById('processarBtn');
+                processarBtn.disabled = true;
+                processarBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+                
+                // Enviar para o servidor
+                fetch('/cd_hortifruti_upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    console.log('Resposta recebida:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Dados recebidos:', data);
+                    if (data.success) {
+                        // Exibir dados processados
+                        const processamentoArea = document.getElementById('processamento-area');
+                        const arquivoProcessado = document.getElementById('arquivo-processado');
+                        const fornecedoresCount = document.getElementById('fornecedores-count');
+                        const fornecedorDropdown = document.getElementById('fornecedor-dropdown');
+                        const fornecedoresQuickList = document.getElementById('fornecedores-quick-list');
+                        
+                        // Atualizar informações do arquivo
+                        arquivoProcessado.textContent = `Arquivo: ${data.filename}`;
+                        
+                        // Atualizar contador de fornecedores
+                        fornecedoresCount.textContent = `${data.fornecedores.length} fornecedores`;
+                        
+                        // Preencher dropdown de fornecedores
+                        fornecedorDropdown.innerHTML = '<option value="">Escolha um fornecedor...</option>';
+                        data.fornecedores.forEach(fornecedor => {
+                            const option = document.createElement('option');
+                            option.value = fornecedor;
+                            option.textContent = fornecedor.replace('#', '');
+                            fornecedorDropdown.appendChild(option);
+                        });
+                        
+                        // Criar botões rápidos dos fornecedores
+                        fornecedoresQuickList.innerHTML = '';
+                        data.fornecedores.forEach(fornecedor => {
+                            const btn = document.createElement('button');
+                            btn.className = 'quick-fornecedor-btn';
+                            btn.dataset.fornecedor = fornecedor;
+                            btn.textContent = fornecedor.replace('#', '');
+                            fornecedoresQuickList.appendChild(btn);
+                        });
+                        
+                        // Mostrar área de processamento
+                        processamentoArea.style.display = 'block';
+                        
+                        // Adicionar event listeners para os fornecedores
+                        addFornecedorEventListeners();
+                        
+                        alert('Arquivo processado com sucesso!');
+                    } else {
+                        alert('Erro: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao processar arquivo');
+                })
+                .finally(() => {
+                    // Restaurar botão
+                    processarBtn.disabled = false;
+                    processarBtn.innerHTML = '<i class="fas fa-cogs"></i> Processar Arquivos';
+                });
+            });
+            
+            // Função para adicionar event listeners dos fornecedores
+            function addFornecedorEventListeners() {
+                const dropdown = document.getElementById('fornecedor-dropdown');
+                const quickBtns = document.querySelectorAll('.quick-fornecedor-btn');
+                const planilhaFornecedor = document.getElementById('planilha-fornecedor');
+                const tituloFornecedor = document.getElementById('titulo-fornecedor');
+                const tabelaFornecedor = document.getElementById('tabela-fornecedor');
+                const searchInput = document.getElementById('produto-search');
+                const clearSearchBtn = document.getElementById('clear-search');
+                
+                // Event listener para o dropdown
+                dropdown.addEventListener('change', function() {
+                    const fornecedor = this.value;
+                    if (fornecedor) {
+                        // Limpar pesquisa ao trocar de fornecedor
+                        searchInput.value = '';
+                        loadFornecedorData(fornecedor);
+                        // Atualizar botão ativo
+                        quickBtns.forEach(btn => {
+                            btn.classList.remove('active');
+                            if (btn.dataset.fornecedor === fornecedor) {
+                                btn.classList.add('active');
+                            }
+                        });
+                    } else {
+                        planilhaFornecedor.style.display = 'none';
+                        quickBtns.forEach(btn => btn.classList.remove('active'));
+                    }
+                });
+                
+                // Event listeners para botões rápidos
+                quickBtns.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const fornecedor = this.dataset.fornecedor;
+                        
+                        // Limpar pesquisa ao trocar de fornecedor
+                        searchInput.value = '';
+                        
+                        // Atualizar dropdown
+                        dropdown.value = fornecedor;
+                        
+                        // Atualizar botões ativos
+                        quickBtns.forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        
+                        // Carregar dados
+                        loadFornecedorData(fornecedor);
+                    });
+                });
+                
+                // Event listener para pesquisa
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase().trim();
+                    filterProducts(searchTerm);
+                });
+                
+                // Event listener para limpar pesquisa
+                clearSearchBtn.addEventListener('click', function() {
+                    searchInput.value = '';
+                    filterProducts('');
+                    searchInput.focus();
+                });
+            }
+            
+            // Função para filtrar produtos
+            function filterProducts(searchTerm) {
+                const cards = document.querySelectorAll('.produto-card');
+                let visibleCount = 0;
+                
+                cards.forEach(card => {
+                    const productName = card.querySelector('[data-field="nome"]').value.toLowerCase();
+                    const productCode = card.querySelector('[data-field="codigo"]').value.toLowerCase();
+                    
+                    if (searchTerm === '' || 
+                        productName.includes(searchTerm) || 
+                        productCode.includes(searchTerm)) {
+                        card.style.display = 'block';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                
+                // Atualizar contador de produtos visíveis
+                const produtosGrid = document.querySelector('.produtos-grid');
+                if (produtosGrid) {
+                    const counterElement = produtosGrid.querySelector('.produtos-counter');
+                    if (!counterElement) {
+                        const counter = document.createElement('div');
+                        counter.className = 'produtos-counter';
+                        counter.style.cssText = 'text-align: center; margin: 10px 0; color: #6c757d; font-size: 14px;';
+                        produtosGrid.insertBefore(counter, produtosGrid.firstChild);
+                    }
+                    const counter = produtosGrid.querySelector('.produtos-counter');
+                    const totalCards = cards.length;
+                    counter.textContent = `${visibleCount} de ${totalCards} produtos`;
+                }
+            }
+            
+            // Função para carregar dados do fornecedor
+            function loadFornecedorData(fornecedor) {
+                const planilhaFornecedor = document.getElementById('planilha-fornecedor');
+                const tituloFornecedor = document.getElementById('titulo-fornecedor');
+                const tabelaFornecedor = document.getElementById('tabela-fornecedor');
+                const searchInput = document.getElementById('produto-search');
+                
+                // Limpar pesquisa ao carregar novo fornecedor
+                searchInput.value = '';
+                
+                tituloFornecedor.textContent = `Planilha do Fornecedor: ${fornecedor.replace('#', '')}`;
+                planilhaFornecedor.style.display = 'block';
+                
+                // Carregar dados do fornecedor
+                fetch(`/cd_hortifruti_fornecedor/${encodeURIComponent(fornecedor)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            tabelaFornecedor.innerHTML = `<p class="text-danger">${data.error}</p>`;
+                            return;
+                        }
+                        
+                        // Criar layout em cards logísticos
+                        let cardsHTML = `
+                            <div class="logistica-container">
+                                <div class="logistica-header">
+                                    <div class="fornecedor-info">
+                                        <i class="fas fa-truck"></i>
+                                        <span>Fornecedor: ${fornecedor.replace('#', '')}</span>
+                                    </div>
+                                    <div class="lojas-info">
+                                        <i class="fas fa-store"></i>
+                                        <span>Lojas: ${data.lojas.length}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="produtos-grid">
+                        `;
+                        
+                        // Adicionar cards dos produtos
+                        data.produtos.forEach((produto, index) => {
+                            cardsHTML += `
+                                <div class="produto-card" data-index="${index}">
+                                    <div class="produto-header">
+                                        <div class="produto-codigo">
+                                            <label>Código:</label>
+                                            <input type="text" class="form-control" value="${produto.codigo}" data-field="codigo">
+                                        </div>
+                                        <div class="produto-nome">
+                                            <label>Produto:</label>
+                                            <input type="text" class="form-control" value="${produto.nome}" data-field="nome">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="quantidades-section">
+                                        <div class="quantidade-fornecedor">
+                                            <label>
+                                                <i class="fas fa-truck"></i>
+                                                Qtd. Fornecedor:
+                                            </label>
+                                            <input type="number" class="quantidade-input" value="${produto.quantidade_fornecedor}" data-field="quantidade_fornecedor" min="0">
+                                        </div>
+                                        
+                                        <div class="quantidades-lojas">
+                                            <label>
+                                                <i class="fas fa-store"></i>
+                                                Distribuição para Lojas:
+                                            </label>
+                                            <div class="lojas-grid">
+                            `;
+                            
+                            // Adicionar campos das lojas
+                            data.lojas.forEach(loja => {
+                                const qtd = produto.lojas[loja] || 0;
+                                const lojaNome = loja.replace('*', '');
+                                cardsHTML += `
+                                    <div class="loja-item">
+                                        <label>${lojaNome}:</label>
+                                        <input type="number" class="loja-input" value="${qtd}" data-field="loja_${loja}" min="0">
+                                    </div>
+                                `;
+                            });
+                            
+                            cardsHTML += `
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="produto-footer">
+                                        <div class="total-info">
+                                            <span>Total: <strong id="total-${index}">${produto.quantidade_fornecedor}</strong></span>
+                                        </div>
+                                        <div class="status-indicator" id="status-${index}">
+                                            <i class="fas fa-check-circle"></i>
+                                            <span>OK</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        cardsHTML += `
+                                </div>
+                            </div>
+                        `;
+                        
+                        tabelaFornecedor.innerHTML = cardsHTML;
+                        
+                        // Adicionar event listeners para cálculos automáticos
+                        addCalculationListeners();
+                    })
+                    .catch(error => {
+                        tabelaFornecedor.innerHTML = `<p class="text-danger">Erro ao carregar dados: ${error}</p>`;
+                    });
+            }
+            
+            // Função para adicionar listeners de cálculo
+            function addCalculationListeners() {
+                const cards = document.querySelectorAll('.produto-card');
+                cards.forEach(card => {
+                    const index = card.dataset.index;
+                    const fornecedorInput = card.querySelector('[data-field="quantidade_fornecedor"]');
+                    const lojaInputs = card.querySelectorAll('.loja-input');
+                    const totalElement = document.getElementById(`total-${index}`);
+                    const statusElement = document.getElementById(`status-${index}`);
+                    
+                    function calculateTotal() {
+                        const fornecedorQtd = parseFloat(fornecedorInput.value) || 0;
+                        let lojasTotal = 0;
+                        
+                        lojaInputs.forEach(input => {
+                            lojasTotal += parseFloat(input.value) || 0;
+                        });
+                        
+                        totalElement.textContent = fornecedorQtd;
+                        
+                        if (Math.abs(fornecedorQtd - lojasTotal) < 0.01) {
+                            statusElement.innerHTML = '<i class="fas fa-check-circle"></i><span>OK</span>';
+                            statusElement.style.color = '#2E7D32';
+                            card.style.borderColor = '#2E7D32';
+                        } else {
+                            statusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i><span>Divergência</span>';
+                            statusElement.style.color = '#dc3545';
+                            card.style.borderColor = '#dc3545';
+                        }
+                    }
+                    
+                    fornecedorInput.addEventListener('input', calculateTotal);
+                    lojaInputs.forEach(input => {
+                        input.addEventListener('input', calculateTotal);
+                    });
+                    
+                    calculateTotal();
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

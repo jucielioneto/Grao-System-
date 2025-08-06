@@ -15,6 +15,7 @@ from itsdangerous import URLSafeTimedSerializer
 from dotenv import load_dotenv
 from config import config
 from file_cleanup import cleanup_manager
+from werkzeug.utils import secure_filename
 
 # Carrega variáveis de ambiente
 load_dotenv()
@@ -847,6 +848,395 @@ def processar_pituba(files):
         'arquivo_txt': nome_arquivo_txt,
         'section': 'pituba'
     })
+
+@app.route('/cd_hortifruti')
+@login_required
+def cd_hortifruti():
+    # Recuperar dados processados da sessão
+    dados_processados = session.get('cd_hortifruti_data', None)
+    return render_template('cd_hortifruti.html', dados=dados_processados)
+
+@app.route('/cd_hortifruti_upload', methods=['POST'])
+@login_required
+def cd_hortifruti_upload():
+    if 'planilha' not in request.files:
+        return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
+    file = request.files['planilha']
+    if file.filename == '':
+        return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
+    if file:
+        filename = secure_filename(file.filename)
+        ext = filename.rsplit('.', 1)[-1].lower()
+        if ext not in ['xls', 'xlsx', 'csv']:
+            return jsonify({'error': 'Tipo de arquivo não suportado. Envie um arquivo Excel ou CSV.'}), 400
+        upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(upload_path)
+        
+        # Processar a planilha
+        try:
+            if ext == 'csv':
+                df = pd.read_csv(upload_path)
+            else:
+                df = pd.read_excel(upload_path)
+            
+            # Identificar colunas
+            fornecedores = []
+            lojas = []
+            colunas_principais = []
+            
+            print(f"Debug: Todas as colunas da planilha: {df.columns.tolist()}")
+            
+            # Primeiro, normalizar todas as colunas removendo espaços
+            df.columns = [str(col).strip() for col in df.columns]
+            
+            for col in df.columns:
+                print(f"Debug: Analisando coluna '{col}' - Tipo: {type(col)} - Repr: {repr(col)}")
+                
+                if col.startswith('#'):
+                    fornecedores.append(col)
+                    print(f"Debug: Fornecedor identificado: {col}")
+                elif col.startswith('*'):
+                    lojas.append(col)
+                    print(f"Debug: Loja identificada: {col}")
+                else:
+                    colunas_principais.append(col)
+                    print(f"Debug: Coluna principal: {col}")
+            
+            print(f"Debug: Fornecedores encontrados: {fornecedores}")
+            print(f"Debug: Lojas encontradas: {lojas}")
+            print(f"Debug: Colunas principais: {colunas_principais}")
+            
+            # Verificar se há colunas que podem ser lojas mas não têm o prefixo *
+            print(f"Debug: Verificando colunas que podem ser lojas:")
+            for col in df.columns:
+                if any(loja_nome in col.upper() for loja_nome in ['PITUBA', 'VILAS', 'VITORIA', 'APIPEMA', 'RESTAURANTE', 'PADARIA']):
+                    print(f"Debug: Possível loja sem prefixo *: '{col}'")
+            
+            # Log dos primeiros registros para debug
+            print(f"Debug: Primeiros 3 registros da planilha:")
+            for i in range(min(3, len(df))):
+                print(f"Debug: Registro {i}: {df.iloc[i].to_dict()}")
+            
+            # Salvar dados processados na sessão
+            session['cd_hortifruti_data'] = {
+                'filename': filename,
+                'fornecedores': fornecedores,
+                'lojas': lojas,
+                'colunas_principais': colunas_principais,
+                'dados': df.to_dict('records')
+            }
+            
+            return jsonify({
+                'success': True,
+                'filename': filename,
+                'fornecedores': fornecedores,
+                'lojas': lojas,
+                'message': f'Arquivo processado com sucesso! Encontrados {len(fornecedores)} fornecedores e {len(lojas)} lojas.'
+            })
+        except Exception as e:
+            return jsonify({'error': f'Erro ao processar a planilha: {str(e)}'}), 500
+    
+    return jsonify({'error': 'Erro ao enviar o arquivo.'}), 500
+
+@app.route('/cd_hortifruti_limpar', methods=['POST'])
+@login_required
+def cd_hortifruti_limpar():
+    # Limpar dados da sessão
+    session.pop('cd_hortifruti_data', None)
+    return jsonify({'success': True, 'message': 'Dados limpos com sucesso!'})
+
+@app.route('/cd_hortifruti_fornecedor/<fornecedor>')
+@login_required
+def cd_hortifruti_fornecedor(fornecedor):
+    try:
+        dados = session.get('cd_hortifruti_data')
+        if not dados:
+            return jsonify({'error': 'Nenhum dado processado encontrado'}), 400
+        
+        print(f"Debug: Processando fornecedor: {fornecedor}")
+        print(f"Debug: Total de produtos: {len(dados['dados'])}")
+        print(f"Debug: Lojas disponíveis: {dados['lojas']}")
+        
+        # Filtrar produtos do fornecedor com quantidade > 0
+        produtos_fornecedor = []
+        for i, produto in enumerate(dados['dados']):
+            try:
+                print(f"Debug: Analisando produto {i}: {produto}")
+                print(f"Debug: Verificando fornecedor '{fornecedor}' no produto")
+                print(f"Debug: Valor do fornecedor: {produto.get(fornecedor)} - Tipo: {type(produto.get(fornecedor))}")
+                
+                # Verificar se o fornecedor existe e tem quantidade > 0
+                if (fornecedor in produto and 
+                    produto[fornecedor] is not None and 
+                    pd.notna(produto[fornecedor]) and 
+                    float(produto[fornecedor]) > 0):
+                    
+                    print(f"Debug: Produto {i} tem quantidade > 0 para fornecedor {fornecedor}")
+                    
+                    produto_info = {
+                        'codigo': str(produto.get('COD.', '')).strip(),
+                        'nome': str(produto.get('NOME DO PRODUTO', '')).strip(),
+                        'unidade': str(produto.get('Und.', '')).strip(),
+                        'quantidade_fornecedor': float(produto[fornecedor]),
+                        'lojas': {}
+                    }
+                    
+                    print(f"Debug: Informações do produto: {produto_info}")
+                    
+                    # Adicionar quantidades das lojas
+                    for loja in dados['lojas']:
+                        valor_loja = produto.get(loja, 0)
+                        print(f"Debug: Loja '{loja}' - Valor: {valor_loja} - Tipo: {type(valor_loja)}")
+                        # Converter NaN para 0, mas manter valores válidos
+                        if valor_loja is not None and pd.notna(valor_loja) and str(valor_loja).strip() != '':
+                            produto_info['lojas'][loja] = float(valor_loja)
+                        else:
+                            produto_info['lojas'][loja] = 0.0
+                    
+                    produtos_fornecedor.append(produto_info)
+                    print(f"Debug: Produto {i} adicionado - Código: {produto_info['codigo']}, Qtd: {produto_info['quantidade_fornecedor']}")
+                    print(f"Debug: Lojas do produto {i}: {produto_info['lojas']}")
+                    
+            except (ValueError, TypeError) as e:
+                print(f"Erro ao processar produto {i}: {e}")
+                print(f"Dados do produto: {produto}")
+                continue
+        
+        print(f"Debug: Total de produtos filtrados: {len(produtos_fornecedor)}")
+        
+        # Log detalhado dos dados que serão enviados
+        print(f"Debug: Dados que serão enviados para o frontend:")
+        for i, produto in enumerate(produtos_fornecedor[:3]):  # Apenas os primeiros 3 para não poluir o log
+            print(f"Debug: Produto {i}: {produto}")
+        
+        response_data = {
+            'fornecedor': fornecedor,
+            'produtos': produtos_fornecedor,
+            'lojas': dados['lojas']
+        }
+        
+        print(f"Debug: Response data keys: {response_data.keys()}")
+        print(f"Debug: Número de produtos na resposta: {len(response_data['produtos'])}")
+        print(f"Debug: Lojas na resposta: {response_data['lojas']}")
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        print(f"Erro na rota cd_hortifruti_fornecedor: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Erro interno: {str(e)}'}), 500
+
+@app.route('/cd_hortifruti_salvar', methods=['POST'])
+@login_required
+def cd_hortifruti_salvar():
+    dados = session.get('cd_hortifruti_data')
+    if not dados:
+        return jsonify({'error': 'Nenhum dado processado encontrado'}), 400
+    
+    try:
+        data = request.get_json()
+        fornecedor = data.get('fornecedor')
+        produtos_editados = data.get('produtos', [])
+        
+        # Atualizar dados na sessão
+        for produto_editado in produtos_editados:
+            # Encontrar o produto original pelos dados principais
+            for i, produto_original in enumerate(dados['dados']):
+                if (produto_original.get('COD.', '') == produto_editado['codigo'] and 
+                    produto_original.get('NOME DO PRODUTO', '') == produto_editado['nome']):
+                    
+                    # Atualizar dados do produto
+                    dados['dados'][i]['COD.'] = produto_editado['codigo']
+                    dados['dados'][i]['NOME DO PRODUTO'] = produto_editado['nome']
+                    dados['dados'][i]['Und.'] = produto_editado['unidade']
+                    dados['dados'][i][fornecedor] = produto_editado['quantidade_fornecedor']
+                    
+                    # Atualizar quantidades das lojas
+                    for loja, quantidade in produto_editado['lojas'].items():
+                        dados['dados'][i][loja] = quantidade
+                    break
+        
+        # Salvar dados atualizados na sessão
+        session['cd_hortifruti_data'] = dados
+        
+        return jsonify({'success': True, 'message': 'Alterações salvas com sucesso!'})
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao salvar alterações: {str(e)}'}), 500
+
+@app.route('/cd_hortifruti_geral')
+@login_required
+def cd_hortifruti_geral():
+    dados = session.get('cd_hortifruti_data')
+    if not dados:
+        return jsonify({'error': 'Nenhum dado processado encontrado'}), 400
+    
+    # Preparar dados para a planilha geral
+    produtos_gerais = []
+    
+    for produto in dados['dados']:
+        produto_info = {
+            'codigo': produto.get('COD.', ''),
+            'nome': produto.get('NOME DO PRODUTO', ''),
+            'unidade': produto.get('Und.', ''),
+            'fornecedores': {},
+            'lojas': {},
+            'total': produto.get('Total', 0)
+        }
+        
+        # Adicionar quantidades dos fornecedores
+        for fornecedor in dados['fornecedores']:
+            produto_info['fornecedores'][fornecedor] = produto.get(fornecedor, 0)
+        
+        # Adicionar quantidades das lojas
+        for loja in dados['lojas']:
+            produto_info['lojas'][loja] = produto.get(loja, 0)
+        
+        produtos_gerais.append(produto_info)
+    
+    return jsonify({
+        'produtos': produtos_gerais,
+        'fornecedores': dados['fornecedores'],
+        'lojas': dados['lojas']
+    })
+
+@app.route('/cd_hortifruti_salvar_geral', methods=['POST'])
+@login_required
+def cd_hortifruti_salvar_geral():
+    dados = session.get('cd_hortifruti_data')
+    if not dados:
+        return jsonify({'error': 'Nenhum dado processado encontrado'}), 400
+    
+    try:
+        data = request.get_json()
+        produtos_editados = data.get('produtos', [])
+        
+        # Atualizar dados na sessão
+        for produto_editado in produtos_editados:
+            # Encontrar o produto original pelos dados principais
+            for i, produto_original in enumerate(dados['dados']):
+                if (produto_original.get('COD.', '') == produto_editado['codigo'] and 
+                    produto_original.get('NOME DO PRODUTO', '') == produto_editado['nome']):
+                    
+                    # Atualizar dados do produto
+                    dados['dados'][i]['COD.'] = produto_editado['codigo']
+                    dados['dados'][i]['NOME DO PRODUTO'] = produto_editado['nome']
+                    dados['dados'][i]['Und.'] = produto_editado['unidade']
+                    dados['dados'][i]['Total'] = produto_editado['total']
+                    
+                    # Atualizar quantidades dos fornecedores
+                    for fornecedor, quantidade in produto_editado['fornecedores'].items():
+                        dados['dados'][i][fornecedor] = quantidade
+                    
+                    # Atualizar quantidades das lojas
+                    for loja, quantidade in produto_editado['lojas'].items():
+                        dados['dados'][i][loja] = quantidade
+                    break
+        
+        # Salvar dados atualizados na sessão
+        session['cd_hortifruti_data'] = dados
+        
+        return jsonify({'success': True, 'message': 'Alterações gerais salvas com sucesso!'})
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao salvar alterações gerais: {str(e)}'}), 500
+
+@app.route('/cd_hortifruti_gerar_txt')
+@login_required
+def cd_hortifruti_gerar_txt():
+    dados = session.get('cd_hortifruti_data')
+    if not dados:
+        return jsonify({'error': 'Nenhum dado processado encontrado'}), 400
+    
+    try:
+        data_hoje = get_brasilia_time().strftime("%Y%m%d")
+        arquivos_gerados = []
+        produtos_processados = []
+        produtos_unicos = {}
+        
+        # Gerar arquivo TXT para cada loja
+        for loja in dados['lojas']:
+            nome_loja_limpo = loja.replace('*', '').replace(' ', '_').lower()
+            nome_arquivo = f"{nome_loja_limpo}-{data_hoje}.txt"
+            caminho_saida = os.path.join(app.config['OUTPUT_FOLDER'], nome_arquivo)
+            
+            print(f'Gerando arquivo: {nome_arquivo}')
+            with open(caminho_saida, 'w') as f:
+                print(f'Processando loja: {loja}')
+                for produto in dados['dados']:
+                    if (pd.notna(produto.get('COD.')) and 
+                        pd.notna(produto.get(loja)) and 
+                        float(produto.get(loja, 0)) > 0):
+                        
+                        # Converte código para inteiro (remove .0) e quantidade para string com vírgula
+                        codigo_int = int(float(produto['COD.']))
+                        quantidade_valor = float(produto[loja])
+                        quantidade_str = str(quantidade_valor).replace('.', ',')
+                        linha = f"{codigo_int};{quantidade_str}\n"
+                        f.write(linha)
+                        
+                        # Debug: mostra alguns valores para verificar
+                        if codigo_int in [1878, 1915, 2009]:
+                            print(f'Código: {codigo_int}, Quantidade original: {produto[loja]}, Quantidade convertida: {quantidade_valor}')
+                        
+                        codigo_produto = str(codigo_int)
+                        nome_produto = str(produto.get('NOME DO PRODUTO', '')) if produto.get('NOME DO PRODUTO') else codigo_produto
+                        
+                        if codigo_produto not in produtos_unicos:
+                            produtos_unicos[codigo_produto] = {
+                                'codigo': codigo_produto,
+                                'nome': nome_produto,
+                                'quantidades': {},
+                                'arquivo_origem': 'CD_HORTIFRUTI'
+                            }
+                        produtos_unicos[codigo_produto]['quantidades'][nome_loja_limpo] = quantidade_valor
+            
+            arquivos_gerados.append(nome_arquivo)
+        
+        # Cria registro de processamento
+        processamento = Processamento(
+            tipo_processamento='cd_hortifruti',
+            produtos_processados=len(produtos_unicos),
+            arquivos_gerados=json.dumps(arquivos_gerados),
+            user_id=current_user.id,
+            planilha_id=None  # Não temos planilha específica para CD HORTIFRUTI
+        )
+        db.session.add(processamento)
+        db.session.commit()
+        
+        # Salva arquivos TXT no banco
+        for nome_arquivo in arquivos_gerados:
+            caminho_txt = os.path.join(app.config['OUTPUT_FOLDER'], nome_arquivo)
+            if os.path.exists(caminho_txt):
+                tipo_loja = nome_arquivo.split('-')[0]
+                arquivo_txt = ArquivoTXT(
+                    nome_arquivo=nome_arquivo,
+                    tamanho=os.path.getsize(caminho_txt),
+                    tipo_loja=tipo_loja,
+                    processamento_id=processamento.id
+                )
+                db.session.add(arquivo_txt)
+        
+        db.session.commit()
+        
+        for produto in produtos_unicos.values():
+            produtos_processados.append(produto)
+        
+        print('Produtos processados:', produtos_processados)
+        print('Arquivos gerados:', arquivos_gerados)
+        
+        return jsonify({
+            'success': True,
+            'produtos': produtos_processados,
+            'total_produtos': len(produtos_processados),
+            'arquivos_gerados': arquivos_gerados,
+            'lojas': [loja.replace('*', '') for loja in dados['lojas']],
+            'message': f'Arquivos TXT gerados com sucesso para {len(arquivos_gerados)} lojas!'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao gerar arquivos TXT: {str(e)}'}), 500
 
 if __name__ == '__main__':
     # Cria as tabelas do banco de dados se não existirem

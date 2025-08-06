@@ -1,0 +1,57 @@
+<header class="header">
+  <div class="header-container">
+    <div class="logo-section">
+      <img src="/static/img/logo.png" alt="Grão de Salvador" class="logo">
+      <div class="company-info">
+        <h1 class="company-name">Grão System</h1>
+        <p class="company-tagline">Automação de sistemas</p>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="{{ url_for('cd_hortifruti') }}" class="nav-link"><i class="fas fa-apple-alt"></i> CD HORTIFRUTI</a>
+      <div class="dropdown">
+        <button class="dropdown-toggle nav-link active" id="dropdownMenu" type="button">
+          Crossdocking Pituba <i class="fas fa-chevron-down"></i>
+        </button>
+        <div class="dropdown-menu" id="dropdownMenuContent">
+          <a href="#" class="dropdown-item active" data-section="pituba">
+            <i class="fas fa-warehouse"></i>
+            Crossdocking Pituba
+          </a>
+          <a href="#" class="dropdown-item" data-section="hortifruti">
+            <i class="fas fa-carrot"></i>
+            Crossdocking Hortifruti
+          </a>
+        </div>
+      </div>
+      <a href="{{ url_for('planilhas') }}" class="nav-link">Planilhas</a>
+      <a href="{{ url_for('txts') }}" class="nav-link">TXTs</a>
+      <!-- Profile Dropdown -->
+      <div class="profile-dropdown">
+        <button class="profile-toggle" id="profileDropdown" type="button">
+          <i class="fas fa-user-circle"></i>
+          <span class="username">{{ current_user.username }}</span>
+          <i class="fas fa-chevron-down"></i>
+        </button>
+        <div class="profile-menu" id="profileMenu">
+          <div class="profile-header">
+            <i class="fas fa-user-circle profile-avatar"></i>
+            <div class="profile-info">
+              <span class="profile-name">{{ current_user.username }}</span>
+              <span class="profile-email">{{ current_user.email }}</span>
+            </div>
+          </div>
+          <div class="profile-divider"></div>
+          <a href="{{ url_for('reset_password_request') }}" class="profile-item">
+            <i class="fas fa-key"></i>
+            Redefinir Senha
+          </a>
+          <a href="{{ url_for('logout') }}" class="profile-item logout-item">
+            <i class="fas fa-sign-out-alt"></i>
+            Sair
+          </a>
+        </div>
+      </div>
+    </nav>
+  </div>
+</header> 
