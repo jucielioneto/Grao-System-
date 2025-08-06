@@ -329,6 +329,40 @@ def visualizar_planilha(planilha_id):
                 'Pedido Vilas': 'vilas',
                 'Pedido Apipema': 'apipema'
             }
+            
+            # FILTRA LINHAS ZERADAS - Remove linhas onde todas as quantidades estão zeradas
+            print('Filtrando linhas zeradas na visualização...')
+            linhas_antes = len(df_hort)
+            
+            # Cria uma máscara para identificar linhas com pelo menos uma quantidade > 0
+            colunas_quantidade = list(lojas.keys())
+            df_hort['tem_quantidade'] = False
+            
+            for idx, row in df_hort.iterrows():
+                tem_quantidade = False
+                for col in colunas_quantidade:
+                    if col in df_hort.columns:
+                        quantidade = row.get(col, 0)
+                        if pd.notna(quantidade) and float(quantidade) > 0:
+                            tem_quantidade = True
+                            break
+                df_hort.at[idx, 'tem_quantidade'] = tem_quantidade
+            
+            # Filtra apenas linhas que têm pelo menos uma quantidade > 0
+            df_hort_filtrado = df_hort[df_hort['tem_quantidade'] == True].copy()
+            linhas_depois = len(df_hort_filtrado)
+            linhas_removidas = linhas_antes - linhas_depois
+            
+            print(f'Linhas antes da filtragem: {linhas_antes}')
+            print(f'Linhas após filtragem: {linhas_depois}')
+            print(f'Linhas zeradas removidas: {linhas_removidas}')
+            
+            # Remove a coluna auxiliar
+            df_hort_filtrado = df_hort_filtrado.drop('tem_quantidade', axis=1)
+            
+            # Usa o DataFrame filtrado para o processamento
+            df_hort = df_hort_filtrado
+            
             for idx, row in df_hort.iterrows():
                 codigo = row.get('Cod.', '')
                 nome_produto = row.get('Nome do Produto', '')
@@ -581,9 +615,44 @@ def processar_hortifruti(files):
         for idx, row in df.head(3).iterrows():
             if pd.notna(row.get('Cod.')):
                 print(f'Linha {idx}: Código={row["Cod."]}, Quantidades={[row.get(col, "N/A") for col in lojas.keys()]}')
+        
+        # FILTRA LINHAS ZERADAS - Remove linhas onde todas as quantidades estão zeradas
+        print('Filtrando linhas zeradas...')
+        linhas_antes = len(df)
+        
+        # Cria uma máscara para identificar linhas com pelo menos uma quantidade > 0
+        colunas_quantidade = list(lojas.keys())
+        df['tem_quantidade'] = False
+        
+        for idx, row in df.iterrows():
+            tem_quantidade = False
+            for col in colunas_quantidade:
+                if col in df.columns:
+                    quantidade = row.get(col, 0)
+                    if pd.notna(quantidade) and float(quantidade) > 0:
+                        tem_quantidade = True
+                        break
+            df.at[idx, 'tem_quantidade'] = tem_quantidade
+        
+        # Filtra apenas linhas que têm pelo menos uma quantidade > 0
+        df_filtrado = df[df['tem_quantidade'] == True].copy()
+        linhas_depois = len(df_filtrado)
+        linhas_removidas = linhas_antes - linhas_depois
+        
+        print(f'Linhas antes da filtragem: {linhas_antes}')
+        print(f'Linhas após filtragem: {linhas_depois}')
+        print(f'Linhas zeradas removidas: {linhas_removidas}')
+        
+        # Remove a coluna auxiliar
+        df_filtrado = df_filtrado.drop('tem_quantidade', axis=1)
+        
+        # Usa o DataFrame filtrado para o processamento
+        df = df_filtrado
+        
     except Exception as e:
         print('Erro ao ler arquivo:', e)
         return jsonify({'error': f'Erro ao ler arquivo: {str(e)}'})
+    
     data_hoje = get_brasilia_time().strftime("%Y%m%d")
     lojas = {
         'Pedido Pituba': 'pituba',
@@ -594,6 +663,7 @@ def processar_hortifruti(files):
     arquivos_gerados = []
     produtos_processados = []
     produtos_unicos = {}
+    
     for coluna_loja, nome_loja in lojas.items():
         if coluna_loja in df.columns:
             nome_arquivo = f"{nome_loja}-{data_hoje}.txt"
@@ -665,7 +735,9 @@ def processar_hortifruti(files):
         'total_produtos': len(produtos_processados),
         'arquivos_gerados': arquivos_gerados,
         'section': 'hortifruti',
-        'loja': list(lojas.values())
+        'loja': list(lojas.values()),
+        'linhas_removidas': linhas_removidas if 'linhas_removidas' in locals() else 0,
+        'mensagem_filtragem': f'Foram removidas {linhas_removidas} linhas com todas as quantidades zeradas.' if 'linhas_removidas' in locals() and linhas_removidas > 0 else 'Nenhuma linha zerada foi removida.'
     })
 
 def processar_pituba(files):

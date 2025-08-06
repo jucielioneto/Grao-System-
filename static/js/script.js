@@ -282,8 +282,38 @@ function handleHortifrutiResponse(data) {
     // Update summary
     const summaryElement = document.getElementById('hortifrutiProductsSummary');
     if (summaryElement) {
-        summaryElement.textContent = 
-            `Total de ${data.total_produtos} produtos processados para ${data.arquivos_gerados.length} lojas`;
+        let summaryText = `Total de ${data.total_produtos} produtos processados para ${data.arquivos_gerados.length} lojas`;
+        
+        // Adiciona informação sobre linhas removidas se disponível
+        if (data.linhas_removidas !== undefined && data.linhas_removidas > 0) {
+            summaryText += ` (${data.linhas_removidas} linhas zeradas removidas)`;
+        }
+        
+        summaryElement.textContent = summaryText;
+    }
+    
+    // Mostra mensagem sobre filtragem se disponível
+    if (data.mensagem_filtragem) {
+        // Cria ou atualiza elemento de mensagem
+        let mensagemElement = document.getElementById('filtragemMensagem');
+        if (!mensagemElement) {
+            mensagemElement = document.createElement('div');
+            mensagemElement.id = 'filtragemMensagem';
+            mensagemElement.className = 'alert alert-info';
+            mensagemElement.style.marginBottom = '20px';
+            
+            // Insere antes da seção de produtos
+            const hortifrutiSection = document.getElementById('hortifrutiProductsSection');
+            if (hortifrutiSection) {
+                hortifrutiSection.parentNode.insertBefore(mensagemElement, hortifrutiSection);
+            }
+        }
+        
+        mensagemElement.innerHTML = `
+            <i class="fas fa-info-circle"></i>
+            <strong>Filtragem automática:</strong> ${data.mensagem_filtragem}
+        `;
+        mensagemElement.style.display = 'block';
     }
     
     // Populate Hortifruti products table
