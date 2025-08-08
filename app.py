@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from config import config
 from file_cleanup import cleanup_manager
 from werkzeug.utils import secure_filename
+from flask_session import Session
 
 # Carrega variáveis de ambiente
 load_dotenv()
@@ -37,6 +38,7 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 mail = Mail(app)
+Session(app)
 
 # Inicializa o sistema de limpeza
 cleanup_manager.init_app(app)
@@ -77,13 +79,13 @@ class Planilha(db.Model):
 # Modelo para histórico de processamentos
 class Processamento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    tipo_processamento = db.Column(db.String(20), nullable=False)  # 'pituba' ou 'hortifruti'
+    tipo_processamento = db.Column(db.String(20), nullable=False)
     data_processamento = db.Column(db.DateTime, default=get_brasilia_time)
     produtos_processados = db.Column(db.Integer, default=0)
-    arquivos_gerados = db.Column(db.Text)  # JSON com lista de arquivos TXT
-    status = db.Column(db.String(20), default='concluido')  # 'processando', 'concluido', 'erro'
+    arquivos_gerados = db.Column(db.Text)
+    status = db.Column(db.String(20), default='concluido')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    planilha_id = db.Column(db.Integer, db.ForeignKey('planilha.id'), nullable=False)
+    planilha_id = db.Column(db.Integer, db.ForeignKey('planilha.id'), nullable=True)  # <-- ALTERE AQUI
 
 # Modelo para histórico de arquivos TXT
 class ArquivoTXT(db.Model):
@@ -580,14 +582,14 @@ def processar_hortifruti(files):
         # Tenta diferentes métodos de leitura para suportar vários formatos
         try:
             # Primeiro tenta com openpyxl (para .xlsx)
-            df = pd.read_excel(caminho_arquivo, header=1, engine='openpyxl')
+            df = pd.read_excel(caminho_arquivo, header=0, engine='openpyxl')
         except:
             try:
                 # Tenta com xlrd (para .xls antigos)
-                df = pd.read_excel(caminho_arquivo, header=1, engine='xlrd')
+                df = pd.read_excel(caminho_arquivo, header=0, engine='xlrd')
             except:
                 # Última tentativa sem especificar engine
-                df = pd.read_excel(caminho_arquivo, header=1)
+                df = pd.read_excel(caminho_arquivo, header=0)
         
         # Renomeia a coluna B para 'Nome do Produto' se necessário
         if len(df.columns) > 1 and df.columns[1] != 'Nome do Produto':
@@ -611,7 +613,7 @@ def processar_hortifruti(files):
             print(f'AVISO: Colunas faltando: {colunas_faltando}')
             print(f'Colunas disponíveis: {df.columns.tolist()}')
         
-        # Mostra algumas linhas com dados para debug
+        # Mostra alguns linhas com dados para debug
         print('Exemplos de dados:')
         for idx, row in df.head(3).iterrows():
             if pd.notna(row.get('Cod.')):
@@ -879,25 +881,33 @@ def cd_hortifruti_upload():
             else:
                 df = pd.read_excel(upload_path)
             
-            # Identificar colunas
+            print(f"Debug: Todas as colunas da planilha: {df.columns.tolist()}")
+            print(f"Debug: Primeiras 3 linhas da planilha:")
+            print(df.head(3))
+            
+            # Identificar colunas baseado na estrutura real da planilha
             fornecedores = []
             lojas = []
             colunas_principais = []
             
-            print(f"Debug: Todas as colunas da planilha: {df.columns.tolist()}")
-            
-            # Primeiro, normalizar todas as colunas removendo espaços
+            # Normalizar todas as colunas removendo espaços extras
             df.columns = [str(col).strip() for col in df.columns]
             
             for col in df.columns:
-                print(f"Debug: Analisando coluna '{col}' - Tipo: {type(col)} - Repr: {repr(col)}")
+                print(f"Debug: Analisando coluna '{col}'")
                 
+                # Verificar se é fornecedor (começa com #)
                 if col.startswith('#'):
                     fornecedores.append(col)
                     print(f"Debug: Fornecedor identificado: {col}")
+                # Verificar se é loja (começa com *)
                 elif col.startswith('*'):
                     lojas.append(col)
                     print(f"Debug: Loja identificada: {col}")
+                # Verificar se é loja sem prefixo * (contém nomes específicos)
+                elif any(loja_nome in col.upper() for loja_nome in ['PITUBA', 'VILAS', 'VITORIA', 'APIPEMA', 'RESTAURANTE', 'PADARIA']):
+                    lojas.append(col)
+                    print(f"Debug: Loja sem prefixo identificada: {col}")
                 else:
                     colunas_principais.append(col)
                     print(f"Debug: Coluna principal: {col}")
@@ -905,12 +915,6 @@ def cd_hortifruti_upload():
             print(f"Debug: Fornecedores encontrados: {fornecedores}")
             print(f"Debug: Lojas encontradas: {lojas}")
             print(f"Debug: Colunas principais: {colunas_principais}")
-            
-            # Verificar se há colunas que podem ser lojas mas não têm o prefixo *
-            print(f"Debug: Verificando colunas que podem ser lojas:")
-            for col in df.columns:
-                if any(loja_nome in col.upper() for loja_nome in ['PITUBA', 'VILAS', 'VITORIA', 'APIPEMA', 'RESTAURANTE', 'PADARIA']):
-                    print(f"Debug: Possível loja sem prefixo *: '{col}'")
             
             # Log dos primeiros registros para debug
             print(f"Debug: Primeiros 3 registros da planilha:")
@@ -934,6 +938,9 @@ def cd_hortifruti_upload():
                 'message': f'Arquivo processado com sucesso! Encontrados {len(fornecedores)} fornecedores e {len(lojas)} lojas.'
             })
         except Exception as e:
+            print(f"Erro ao processar planilha: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return jsonify({'error': f'Erro ao processar a planilha: {str(e)}'}), 500
     
     return jsonify({'error': 'Erro ao enviar o arquivo.'}), 500
@@ -949,8 +956,11 @@ def cd_hortifruti_limpar():
 @login_required
 def cd_hortifruti_fornecedor(fornecedor):
     try:
+        print(f"Debug: Verificando dados da sessão para fornecedor: {fornecedor}")
         dados = session.get('cd_hortifruti_data')
+        print(f"Debug: Dados da sessão: {dados is not None}")
         if not dados:
+            print(f"Debug: Nenhum dado encontrado na sessão")
             return jsonify({'error': 'Nenhum dado processado encontrado'}), 400
         
         print(f"Debug: Processando fornecedor: {fornecedor}")
@@ -961,23 +971,44 @@ def cd_hortifruti_fornecedor(fornecedor):
         produtos_fornecedor = []
         for i, produto in enumerate(dados['dados']):
             try:
-                print(f"Debug: Analisando produto {i}: {produto}")
-                print(f"Debug: Verificando fornecedor '{fornecedor}' no produto")
-                print(f"Debug: Valor do fornecedor: {produto.get(fornecedor)} - Tipo: {type(produto.get(fornecedor))}")
+                print(f"Debug: Analisando produto {i}: Código={produto.get('COD.', 'N/A')}, Nome={produto.get('NOME DO PRODUTO', 'N/A')}")
                 
                 # Verificar se o fornecedor existe e tem quantidade > 0
-                if (fornecedor in produto and 
-                    produto[fornecedor] is not None and 
-                    pd.notna(produto[fornecedor]) and 
-                    float(produto[fornecedor]) > 0):
+                valor_fornecedor = produto.get(fornecedor)
+                print(f"Debug: Valor do fornecedor '{fornecedor}': {valor_fornecedor} - Tipo: {type(valor_fornecedor)}")
+                
+                if (valor_fornecedor is not None and 
+                    pd.notna(valor_fornecedor) and 
+                    float(valor_fornecedor) > 0):
                     
                     print(f"Debug: Produto {i} tem quantidade > 0 para fornecedor {fornecedor}")
                     
+                    # Obter código do produto (pode ser float, converter para int)
+                    codigo_produto = produto.get('COD.', '')
+                    if pd.notna(codigo_produto):
+                        codigo_produto = str(int(float(codigo_produto)))
+                    else:
+                        codigo_produto = ''
+                    
+                    # Obter nome do produto
+                    nome_produto = produto.get('NOME DO PRODUTO', '')
+                    if pd.notna(nome_produto):
+                        nome_produto = str(nome_produto).strip()
+                    else:
+                        nome_produto = codigo_produto
+                    
+                    # Obter unidade
+                    unidade_produto = produto.get('Und.', '')
+                    if pd.notna(unidade_produto):
+                        unidade_produto = str(unidade_produto).strip()
+                    else:
+                        unidade_produto = ''
+                    
                     produto_info = {
-                        'codigo': str(produto.get('COD.', '')).strip(),
-                        'nome': str(produto.get('NOME DO PRODUTO', '')).strip(),
-                        'unidade': str(produto.get('Und.', '')).strip(),
-                        'quantidade_fornecedor': float(produto[fornecedor]),
+                        'codigo': codigo_produto,
+                        'nome': nome_produto,
+                        'unidade': unidade_produto,
+                        'quantidade_fornecedor': float(valor_fornecedor),
                         'lojas': {}
                     }
                     
@@ -987,6 +1018,7 @@ def cd_hortifruti_fornecedor(fornecedor):
                     for loja in dados['lojas']:
                         valor_loja = produto.get(loja, 0)
                         print(f"Debug: Loja '{loja}' - Valor: {valor_loja} - Tipo: {type(valor_loja)}")
+                        
                         # Converter NaN para 0, mas manter valores válidos
                         if valor_loja is not None and pd.notna(valor_loja) and str(valor_loja).strip() != '':
                             produto_info['lojas'][loja] = float(valor_loja)
@@ -1076,22 +1108,58 @@ def cd_hortifruti_geral():
     produtos_gerais = []
     
     for produto in dados['dados']:
+        # Obter código do produto (pode ser float, converter para int)
+        codigo_produto = produto.get('COD.', '')
+        if pd.notna(codigo_produto):
+            codigo_produto = str(int(float(codigo_produto)))
+        else:
+            codigo_produto = ''
+        
+        # Obter nome do produto
+        nome_produto = produto.get('NOME DO PRODUTO', '')
+        if pd.notna(nome_produto):
+            nome_produto = str(nome_produto).strip()
+        else:
+            nome_produto = codigo_produto
+        
+        # Obter unidade
+        unidade_produto = produto.get('Und.', '')
+        if pd.notna(unidade_produto):
+            unidade_produto = str(unidade_produto).strip()
+        else:
+            unidade_produto = ''
+        
+        # Obter total
+        total_produto = produto.get('Total', 0)
+        if pd.notna(total_produto):
+            total_produto = float(total_produto)
+        else:
+            total_produto = 0.0
+        
         produto_info = {
-            'codigo': produto.get('COD.', ''),
-            'nome': produto.get('NOME DO PRODUTO', ''),
-            'unidade': produto.get('Und.', ''),
+            'codigo': codigo_produto,
+            'nome': nome_produto,
+            'unidade': unidade_produto,
             'fornecedores': {},
             'lojas': {},
-            'total': produto.get('Total', 0)
+            'total': total_produto
         }
         
         # Adicionar quantidades dos fornecedores
         for fornecedor in dados['fornecedores']:
-            produto_info['fornecedores'][fornecedor] = produto.get(fornecedor, 0)
+            valor_fornecedor = produto.get(fornecedor, 0)
+            if pd.notna(valor_fornecedor):
+                produto_info['fornecedores'][fornecedor] = float(valor_fornecedor)
+            else:
+                produto_info['fornecedores'][fornecedor] = 0.0
         
         # Adicionar quantidades das lojas
         for loja in dados['lojas']:
-            produto_info['lojas'][loja] = produto.get(loja, 0)
+            valor_loja = produto.get(loja, 0)
+            if pd.notna(valor_loja):
+                produto_info['lojas'][loja] = float(valor_loja)
+            else:
+                produto_info['lojas'][loja] = 0.0
         
         produtos_gerais.append(produto_info)
     
@@ -1165,32 +1233,36 @@ def cd_hortifruti_gerar_txt():
             with open(caminho_saida, 'w') as f:
                 print(f'Processando loja: {loja}')
                 for produto in dados['dados']:
-                    if (pd.notna(produto.get('COD.')) and 
-                        pd.notna(produto.get(loja)) and 
-                        float(produto.get(loja, 0)) > 0):
+                    # Verificar se o produto tem código válido e quantidade > 0 para a loja
+                    codigo_produto = produto.get('COD.', '')
+                    quantidade_loja = produto.get(loja, 0)
+                    
+                    if (pd.notna(codigo_produto) and 
+                        pd.notna(quantidade_loja) and 
+                        float(quantidade_loja) > 0):
                         
                         # Converte código para inteiro (remove .0) e quantidade para string com vírgula
-                        codigo_int = int(float(produto['COD.']))
-                        quantidade_valor = float(produto[loja])
+                        codigo_int = int(float(codigo_produto))
+                        quantidade_valor = float(quantidade_loja)
                         quantidade_str = str(quantidade_valor).replace('.', ',')
                         linha = f"{codigo_int};{quantidade_str}\n"
                         f.write(linha)
                         
                         # Debug: mostra alguns valores para verificar
-                        if codigo_int in [1878, 1915, 2009]:
-                            print(f'Código: {codigo_int}, Quantidade original: {produto[loja]}, Quantidade convertida: {quantidade_valor}')
+                        if codigo_int in [1778, 1915, 2009]:
+                            print(f'Código: {codigo_int}, Quantidade original: {quantidade_loja}, Quantidade convertida: {quantidade_valor}')
                         
-                        codigo_produto = str(codigo_int)
-                        nome_produto = str(produto.get('NOME DO PRODUTO', '')) if produto.get('NOME DO PRODUTO') else codigo_produto
+                        codigo_produto_str = str(codigo_int)
+                        nome_produto = str(produto.get('NOME DO PRODUTO', '')) if produto.get('NOME DO PRODUTO') else codigo_produto_str
                         
-                        if codigo_produto not in produtos_unicos:
-                            produtos_unicos[codigo_produto] = {
-                                'codigo': codigo_produto,
+                        if codigo_produto_str not in produtos_unicos:
+                            produtos_unicos[codigo_produto_str] = {
+                                'codigo': codigo_produto_str,
                                 'nome': nome_produto,
                                 'quantidades': {},
                                 'arquivo_origem': 'CD_HORTIFRUTI'
                             }
-                        produtos_unicos[codigo_produto]['quantidades'][nome_loja_limpo] = quantidade_valor
+                        produtos_unicos[codigo_produto_str]['quantidades'][nome_loja_limpo] = quantidade_valor
             
             arquivos_gerados.append(nome_arquivo)
         
@@ -1236,6 +1308,9 @@ def cd_hortifruti_gerar_txt():
         })
         
     except Exception as e:
+        print(f"Erro ao gerar arquivos TXT: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'Erro ao gerar arquivos TXT: {str(e)}'}), 500
 
 if __name__ == '__main__':

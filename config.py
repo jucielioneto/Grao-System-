@@ -6,6 +6,11 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'sua_chave_secreta_aqui'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
+    # Configurações de sessão
+    SESSION_TYPE = 'filesystem'
+    PERMANENT_SESSION_LIFETIME = 3600  # 1 hora
+    SESSION_FILE_THRESHOLD = 500
+    
     # Configurações de e-mail
     MAIL_SERVER = os.environ.get('MAIL_SERVER') or 'smtp.gmail.com'
     MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)

@@ -748,6 +748,7 @@
                 processarBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
                 
                 // Enviar para o servidor
+                console.log('Enviando arquivo para processamento...');
                 fetch('/cd_hortifruti_upload', {
                     method: 'POST',
                     body: formData
@@ -925,11 +926,18 @@
                 tituloFornecedor.textContent = `Planilha do Fornecedor: ${fornecedor.replace('#', '')}`;
                 planilhaFornecedor.style.display = 'block';
                 
+                console.log('Carregando dados para fornecedor:', fornecedor);
+                
                 // Carregar dados do fornecedor
                 fetch(`/cd_hortifruti_fornecedor/${encodeURIComponent(fornecedor)}`)
-                    .then(response => response.json())
+                    .then(response => {
+                        console.log('Resposta do servidor:', response.status);
+                        return response.json();
+                    })
                     .then(data => {
+                        console.log('Dados recebidos:', data);
                         if (data.error) {
+                            console.error('Erro recebido:', data.error);
                             tabelaFornecedor.innerHTML = `<p class="text-danger">${data.error}</p>`;
                             return;
                         }
@@ -963,6 +971,10 @@
                                         <div class="produto-nome">
                                             <label>Produto:</label>
                                             <input type="text" class="form-control" value="${produto.nome}" data-field="nome">
+                                        </div>
+                                        <div class="produto-unidade">
+                                            <label>Unidade:</label>
+                                            <input type="text" class="form-control" value="${produto.unidade}" data-field="unidade">
                                         </div>
                                     </div>
                                     
@@ -1065,6 +1077,305 @@
                     });
                     
                     calculateTotal();
+                });
+            }
+            
+            // Adicionar event listeners para os botões de ação
+            const salvarAlteracoesBtn = document.getElementById('salvar-alteracoes');
+            const salvarGeralBtn = document.getElementById('salvar-geral');
+            const gerarGeralBtn = document.getElementById('gerar-geral');
+            const gerarTxtBtn = document.getElementById('gerar-txt');
+            
+            if (salvarAlteracoesBtn) {
+                salvarAlteracoesBtn.addEventListener('click', function() {
+                    const fornecedorDropdown = document.getElementById('fornecedor-dropdown');
+                    const fornecedor = fornecedorDropdown.value;
+                    
+                    if (!fornecedor) {
+                        alert('Selecione um fornecedor primeiro!');
+                        return;
+                    }
+                    
+                    // Coletar dados dos produtos editados
+                    const produtosEditados = [];
+                    const cards = document.querySelectorAll('.produto-card');
+                    
+                    cards.forEach(card => {
+                        const index = card.dataset.index;
+                        const codigo = card.querySelector('[data-field="codigo"]').value;
+                        const nome = card.querySelector('[data-field="nome"]').value;
+                        const unidade = card.querySelector('[data-field="unidade"]') ? card.querySelector('[data-field="unidade"]').value : '';
+                        const quantidadeFornecedor = parseFloat(card.querySelector('[data-field="quantidade_fornecedor"]').value) || 0;
+                        
+                        const lojas = {};
+                        const lojaInputs = card.querySelectorAll('.loja-input');
+                        lojaInputs.forEach(input => {
+                            const lojaField = input.dataset.field;
+                            const lojaNome = lojaField.replace('loja_', '');
+                            lojas[lojaNome] = parseFloat(input.value) || 0;
+                        });
+                        
+                        produtosEditados.push({
+                            codigo: codigo,
+                            nome: nome,
+                            unidade: unidade,
+                            quantidade_fornecedor: quantidadeFornecedor,
+                            lojas: lojas
+                        });
+                    });
+                    
+                    // Enviar dados para o servidor
+                    fetch('/cd_hortifruti_salvar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            fornecedor: fornecedor,
+                            produtos: produtosEditados
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Alterações salvas com sucesso!');
+                        } else {
+                            alert('Erro ao salvar: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro:', error);
+                        alert('Erro ao salvar alterações');
+                    });
+                });
+            }
+            
+            if (salvarGeralBtn) {
+                salvarGeralBtn.addEventListener('click', function() {
+                    // Coletar dados da planilha geral
+                    const produtosEditados = [];
+                    const cards = document.querySelectorAll('.produto-card');
+                    
+                    cards.forEach(card => {
+                        const codigo = card.querySelector('[data-field="codigo"]').value;
+                        const nome = card.querySelector('[data-field="nome"]').value;
+                        const unidade = card.querySelector('[data-field="unidade"]') ? card.querySelector('[data-field="unidade"]').value : '';
+                        const total = parseFloat(card.querySelector('[data-field="total"]') ? card.querySelector('[data-field="total"]').value : 0) || 0;
+                        
+                        const fornecedores = {};
+                        const fornecedorInputs = card.querySelectorAll('[data-field^="fornecedor_"]');
+                        fornecedorInputs.forEach(input => {
+                            const fornecedorField = input.dataset.field;
+                            const fornecedorNome = fornecedorField.replace('fornecedor_', '');
+                            fornecedores[fornecedorNome] = parseFloat(input.value) || 0;
+                        });
+                        
+                        const lojas = {};
+                        const lojaInputs = card.querySelectorAll('[data-field^="loja_"]');
+                        lojaInputs.forEach(input => {
+                            const lojaField = input.dataset.field;
+                            const lojaNome = lojaField.replace('loja_', '');
+                            lojas[lojaNome] = parseFloat(input.value) || 0;
+                        });
+                        
+                        produtosEditados.push({
+                            codigo: codigo,
+                            nome: nome,
+                            unidade: unidade,
+                            total: total,
+                            fornecedores: fornecedores,
+                            lojas: lojas
+                        });
+                    });
+                    
+                    // Enviar dados para o servidor
+                    fetch('/cd_hortifruti_salvar_geral', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            produtos: produtosEditados
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Alterações gerais salvas com sucesso!');
+                        } else {
+                            alert('Erro ao salvar: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro:', error);
+                        alert('Erro ao salvar alterações gerais');
+                    });
+                });
+            }
+            
+            if (gerarGeralBtn) {
+                gerarGeralBtn.addEventListener('click', function() {
+                    // Carregar planilha geral
+                    fetch('/cd_hortifruti_geral')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                alert('Erro: ' + data.error);
+                                return;
+                            }
+                            
+                            // Exibir planilha geral
+                            const planilhaGeral = document.getElementById('planilha-geral');
+                            const tabelaGeral = document.getElementById('tabela-geral');
+                            
+                            planilhaGeral.style.display = 'block';
+                            
+                            // Criar layout da planilha geral
+                            let geralHTML = `
+                                <div class="logistica-container">
+                                    <div class="logistica-header">
+                                        <div class="fornecedor-info">
+                                            <i class="fas fa-list"></i>
+                                            <span>Planilha Geral - Todos os Fornecedores</span>
+                                        </div>
+                                        <div class="lojas-info">
+                                            <i class="fas fa-store"></i>
+                                            <span>Lojas: ${data.lojas.length}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="produtos-grid">
+                            `;
+                            
+                            // Adicionar cards dos produtos
+                            data.produtos.forEach((produto, index) => {
+                                geralHTML += `
+                                    <div class="produto-card" data-index="${index}">
+                                        <div class="produto-header">
+                                            <div class="produto-codigo">
+                                                <label>Código:</label>
+                                                <input type="text" class="form-control" value="${produto.codigo}" data-field="codigo">
+                                            </div>
+                                            <div class="produto-nome">
+                                                <label>Produto:</label>
+                                                <input type="text" class="form-control" value="${produto.nome}" data-field="nome">
+                                            </div>
+                                            <div class="produto-unidade">
+                                                <label>Unidade:</label>
+                                                <input type="text" class="form-control" value="${produto.unidade}" data-field="unidade">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="quantidades-section">
+                                            <div class="quantidades-lojas">
+                                                <label>
+                                                    <i class="fas fa-truck"></i>
+                                                    Fornecedores:
+                                                </label>
+                                                <div class="lojas-grid">
+                                `;
+                                
+                                // Adicionar campos dos fornecedores
+                                data.fornecedores.forEach(fornecedor => {
+                                    const qtd = produto.fornecedores[fornecedor] || 0;
+                                    const fornecedorNome = fornecedor.replace('#', '');
+                                    geralHTML += `
+                                        <div class="loja-item">
+                                            <label>${fornecedorNome}:</label>
+                                            <input type="number" class="loja-input" value="${qtd}" data-field="fornecedor_${fornecedor}" min="0">
+                                        </div>
+                                    `;
+                                });
+                                
+                                geralHTML += `
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="quantidades-lojas">
+                                                <label>
+                                                    <i class="fas fa-store"></i>
+                                                    Lojas:
+                                                </label>
+                                                <div class="lojas-grid">
+                                `;
+                                
+                                // Adicionar campos das lojas
+                                data.lojas.forEach(loja => {
+                                    const qtd = produto.lojas[loja] || 0;
+                                    const lojaNome = loja.replace('*', '');
+                                    geralHTML += `
+                                        <div class="loja-item">
+                                            <label>${lojaNome}:</label>
+                                            <input type="number" class="loja-input" value="${qtd}" data-field="loja_${loja}" min="0">
+                                        </div>
+                                    `;
+                                });
+                                
+                                geralHTML += `
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="quantidade-fornecedor">
+                                                <label>
+                                                    <i class="fas fa-calculator"></i>
+                                                    Total:
+                                                </label>
+                                                <input type="number" class="quantidade-input" value="${produto.total}" data-field="total" min="0">
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            
+                            geralHTML += `
+                                    </div>
+                                </div>
+                            `;
+                            
+                            tabelaGeral.innerHTML = geralHTML;
+                        })
+                        .catch(error => {
+                            console.error('Erro:', error);
+                            alert('Erro ao carregar planilha geral');
+                        });
+                });
+            }
+            
+            if (gerarTxtBtn) {
+                gerarTxtBtn.addEventListener('click', function() {
+                    // Confirmar antes de gerar TXTs
+                    if (!confirm('Deseja gerar os arquivos TXT para todas as lojas?')) {
+                        return;
+                    }
+                    
+                    // Mostrar loading
+                    const btn = this;
+                    const originalText = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando TXTs...';
+                    
+                    // Gerar arquivos TXT
+                    fetch('/cd_hortifruti_gerar_txt')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert(`Arquivos TXT gerados com sucesso!\n\nArquivos criados:\n${data.arquivos_gerados.join('\n')}\n\nTotal de produtos: ${data.total_produtos}`);
+                                
+                                // Opcional: redirecionar para a página de TXTs
+                                // window.location.href = '/txts';
+                            } else {
+                                alert('Erro ao gerar TXTs: ' + data.error);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro:', error);
+                            alert('Erro ao gerar arquivos TXT');
+                        })
+                        .finally(() => {
+                            // Restaurar botão
+                            btn.disabled = false;
+                            btn.innerHTML = originalText;
+                        });
                 });
             }
         });
